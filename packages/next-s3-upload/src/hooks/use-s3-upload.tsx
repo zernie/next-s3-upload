@@ -1,7 +1,7 @@
+import S3 from 'aws-sdk/clients/s3';
 import React, { ChangeEvent, ReactElement } from 'react';
 import { useRef, useState } from 'react';
 import { forwardRef } from 'react';
-import S3 from 'aws-sdk/clients/s3';
 
 type FileInputProps = {
   onChange: (
@@ -38,6 +38,7 @@ type TrackedFile = {
 
 type UseS3UploadOptions = {
   endpoint?: string;
+  headers?: HeadersInit;
 };
 
 type UploadResult = {
@@ -69,10 +70,14 @@ export const useS3Upload: UseS3Upload = (options = {}) => {
   };
 
   let endpoint = options.endpoint ?? '/api/s3-upload';
+  let headers = options.headers ?? {};
 
-  let uploadToS3: UploadToS3 = async file => {
+  let uploadToS3: UploadToS3 = async (file) => {
     let filename = encodeURIComponent(file.name);
-    let res = await fetch(`${endpoint}?filename=${filename}`);
+    let res = await fetch(`${endpoint}?filename=${filename}`, {
+      credentials: 'include',
+      headers,
+    });
     let data = await res.json();
 
     if (data.error) {
@@ -102,15 +107,15 @@ export const useS3Upload: UseS3Upload = (options = {}) => {
 
       let s3Upload = s3.upload(params);
 
-      setFiles(files => [
+      setFiles((files) => [
         ...files,
         { file, progress: 0, uploaded: 0, size: file.size },
       ]);
 
-      s3Upload.on('httpUploadProgress', event => {
+      s3Upload.on('httpUploadProgress', (event) => {
         if (event.total) {
-          setFiles(files =>
-            files.map(trackedFile =>
+          setFiles((files) =>
+            files.map((trackedFile) =>
               trackedFile.file === file
                 ? {
                     file,
